@@ -1,0 +1,20 @@
+Package: viralORF
+Type: Package
+Title: Finds Viral Open Reading Frames
+Version: 0.1.0
+Author: Hou Wei Chook
+Maintainer: Hou Wei Chook <HouWei.Chook@ed.ac.uk>
+Description: A streamlined toolkit developed for viral genome analysis.
+    Contains custom pipelines to identify, translate, and map two 
+    different definitions of an open reading frame.
+License: MIT + file LICENSE
+Encoding: UTF-8
+LazyData: true
+Imports: 
+    seqinr,
+    ORFik,
+    tidyverse,
+    Biostrings,
+    patchwork
+BiocViews: Bioinformatics, Annotation, Sequencing
+RoxygenNote: 7.3.2
