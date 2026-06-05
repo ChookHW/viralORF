@@ -9,14 +9,14 @@ find_startstop_ORFs <- function(file_name) {
   }
 
   # 1. INTERNAL LOGIC TABLES ------------------------------------------------------------------
-  kozak_reference <- tibble(
+  kozak_reference <- tibble::tibble(
     dinuc = c("AG", "GG", "AA", "GA", "AC", "AT", "GC", "GT", "CG", "TG", "CA", "CC", "CT", "TA", "TC", "TT"),
     kozak_strength = c("strong", "strong", "moderate", "moderate", "moderate", "moderate",
                        "moderate", "moderate", "moderate", "moderate", "weak", "weak",
                        "weak", "weak", "weak", "weak")
   )
 
-  frame_correction_table <- tibble(
+  frame_correction_table <- tibble::tibble(
     condition = c(
       rep("plus_0", 3), rep("plus_1", 3), rep("plus_2", 3),
       rep("revcom_plus_0", 3), rep("revcom_plus_1", 3), rep("revcom_plus_2", 3)
@@ -68,14 +68,14 @@ find_startstop_ORFs <- function(file_name) {
 
       pos_minus3_in_full <- current_orf_start - 3
       if (pos_minus3_in_full >= 1 & pos_minus3_in_full <= full_seq_len) {
-        dinuc1 <- str_sub(current_full_seq, pos_minus3_in_full, pos_minus3_in_full)
+        dinuc1 <- stringr::str_sub(current_full_seq, pos_minus3_in_full, pos_minus3_in_full)
       } else {
         dinuc1 <- "_"
       }
 
       pos_plus4_in_orf <- 4
       if (pos_plus4_in_orf >= 1 & pos_plus4_in_orf <= orf_seq_len) {
-        dinuc2 <- str_sub(current_orf_seq, pos_plus4_in_orf, pos_plus4_in_orf)
+        dinuc2 <- stringr::str_sub(current_orf_seq, pos_plus4_in_orf, pos_plus4_in_orf)
       } else {
         dinuc2 <- NA_character_
       }
@@ -87,8 +87,8 @@ find_startstop_ORFs <- function(file_name) {
 
   process_strand_ORFs <- function(sequences_df, strand_type, frame_prefix) {
     sequences_df %>%
-      rowwise() %>%
-      mutate(
+      dplyr::rowwise() %>%
+      dplyr::mutate(
         processed_sequence = if (strand_type == "negative") {
           toupper(complem(strReverse(sequence)))
         } else {
@@ -96,17 +96,17 @@ find_startstop_ORFs <- function(file_name) {
         },
         ORFs = list(as.data.frame(ORFik::findORFs(processed_sequence, longestORF = FALSE, startDefinition(6))))
       ) %>%
-      unnest(ORFs) %>%
-      ungroup() %>%
-      as_tibble() %>%
-      rename(start = start, end = end, width = width) %>%
-      mutate(
+      tidyr::unnest(ORFs) %>%
+      dplyr::ungroup() %>%
+      tibble::as_tibble() %>%
+      dplyr::rename(start = start, end = end, width = width) %>%
+      dplyr::mutate(
         ORF_ID = paste(seq_name, row_number(), sep = "-"),
         length = width,
-        nuc_sequence = str_sub(processed_sequence, start, end),
+        nuc_sequence = stringr::str_sub(processed_sequence, start, end),
         kozak_dinuc = get_kozak_dinuc(processed_sequence, nuc_sequence, start)
       ) %>%
-      select(seq = seq_name, ORF_ID, start, end, length, nuc_sequence, kozak_dinuc)
+      dplyr::select(seq = seq_name, ORF_ID, start, end, length, nuc_sequence, kozak_dinuc)
   }
 
   # 3. CORE PIPELINE PROCESSING ----------------------------------------------------------------
@@ -116,7 +116,7 @@ find_startstop_ORFs <- function(file_name) {
   segment_name <- sub("_complete$", "", segment_name)
 
   # PASS 1: Check for sequences containing ambiguous bases
-  all_seqs_raw_list <- read.fasta(file = file_name, set.attributes = FALSE, as.string = TRUE)
+  all_seqs_raw_list <- seqinr::read.fasta(file = file_name, set.attributes = FALSE, as.string = TRUE)
   has_ambiguous_lgl_vec <- sapply(all_seqs_raw_list, has_ambiguous_bases)
   ambiguous_names <- names(all_seqs_raw_list[has_ambiguous_lgl_vec])
 
@@ -128,7 +128,7 @@ find_startstop_ORFs <- function(file_name) {
   }
 
   # PASS 2: Import clean sequences using Biostrings
-  fasta_file <- readDNAStringSet(file_name)
+  fasta_file <- Biostrings::readDNAStringSet(file_name)
   all_biostring_names <- names(fasta_file)
   clean_names <- all_biostring_names[!(all_biostring_names %in% ambiguous_names)]
   sequences_without_ambiguities <- fasta_file[clean_names]
@@ -138,10 +138,10 @@ find_startstop_ORFs <- function(file_name) {
   }
 
   temp_filtered_fasta <- tempfile(pattern = "filtered_sequences_", fileext = ".fasta")
-  writeXStringSet(sequences_without_ambiguities, temp_filtered_fasta)
-  all_sequences_list <- read.fasta(file = temp_filtered_fasta, set.attributes = FALSE, as.string = TRUE)
+  Biostrings::writeXStringSet(sequences_without_ambiguities, temp_filtered_fasta)
+  all_sequences_list <- seqinr::read.fasta(file = temp_filtered_fasta, set.attributes = FALSE, as.string = TRUE)
 
-  all_sequences_df <- tibble(
+  all_sequences_df <- tibble::tibble(
     seq_name = names(all_sequences_list),
     sequence = as.character(all_sequences_list)
   )
@@ -151,59 +151,59 @@ find_startstop_ORFs <- function(file_name) {
 
   # Frame correction (positive)
   max_pos_start <- max(as.numeric(positive_ORF_1$start), na.rm = TRUE)
-  placeholder_frame_table <- tibble(
+  placeholder_frame_table <- tibble::tibble(
     nuc_position = as.character(1:(max_pos_start + 1000)),
     placeholder_frame = rep(c("plus_0", "plus_1", "plus_2"), length.out = max_pos_start + 1000)
   )
 
   positive_ORF_2 <- positive_ORF_1 %>%
-    mutate(start = as.character(start)) %>%
+    dplyr::mutate(start = as.character(start)) %>%
     left_join(placeholder_frame_table, by = c("start" = "nuc_position"))
 
   positive_ORF_3 <- positive_ORF_2 %>%
     group_by(seq) %>%
-    mutate(
+    dplyr::mutate(
       length = as.numeric(length),
       longest_orf_placeholder = placeholder_frame[which.max(length)],
       correct_frame_lookup = map(longest_orf_placeholder, ~frame_correction_table %>%
-                                   filter(condition == .x)),
+                                   dplyr::filter(condition == .x)),
       frame = map2_chr(placeholder_frame, correct_frame_lookup,
-                       ~filter(.y, frame_to_change == .x)$correct_frame)
+                       ~dplyr::filter(.y, frame_to_change == .x)$correct_frame)
     ) %>%
-    ungroup() %>%
-    select(-placeholder_frame, -longest_orf_placeholder, -correct_frame_lookup) %>%
-    mutate(sense = "positive")
+    dplyr::ungroup() %>%
+    dplyr::select(-placeholder_frame, -longest_orf_placeholder, -correct_frame_lookup) %>%
+    dplyr::mutate(sense = "positive")
 
   # Process negative strand
   negative_ORF_1 <- process_strand_ORFs(all_sequences_df, "negative", "revcom_plus_")
 
   # Frame correction (negative)
   max_neg_start <- max(as.numeric(negative_ORF_1$start), na.rm = TRUE)
-  placeholder_frame_table_neg <- tibble(
+  placeholder_frame_table_neg <- tibble::tibble(
     nuc_position = as.character(1:(max_neg_start + 1000)),
     placeholder_frame = rep(c("revcom_plus_0", "revcom_plus_1", "revcom_plus_2"), length.out = max_neg_start + 1000)
   )
 
   negative_ORF_2 <- negative_ORF_1 %>%
-    mutate(start = as.character(start)) %>%
+    dplyr::mutate(start = as.character(start)) %>%
     left_join(placeholder_frame_table_neg, by = c("start" = "nuc_position"))
 
   negative_ORF_3 <- negative_ORF_2 %>%
     group_by(seq) %>%
-    mutate(
+    dplyr::mutate(
       length = as.numeric(length),
       longest_orf_placeholder = placeholder_frame[which.max(length)],
       correct_frame_lookup = map(longest_orf_placeholder, ~frame_correction_table %>%
-                                   filter(condition == .x)),
+                                   dplyr::filter(condition == .x)),
       frame = map2_chr(placeholder_frame, correct_frame_lookup,
-                       ~filter(.y, frame_to_change == .x)$correct_frame)
+                       ~dplyr::filter(.y, frame_to_change == .x)$correct_frame)
     ) %>%
-    ungroup() %>%
-    select(-placeholder_frame, -longest_orf_placeholder, -correct_frame_lookup) %>%
-    mutate(sense = "negative")
+    dplyr::ungroup() %>%
+    dplyr::select(-placeholder_frame, -longest_orf_placeholder, -correct_frame_lookup) %>%
+    dplyr::mutate(sense = "negative")
 
   # Compiling data
-  all_ORFs <- bind_rows(positive_ORF_3, negative_ORF_3)
+  all_ORFs <- dplyr::bind_rows(positive_ORF_3, negative_ORF_3)
 
   # Adding Kozak strength calculations
   all_ORFs <- all_ORFs %>%
@@ -214,13 +214,13 @@ find_startstop_ORFs <- function(file_name) {
 
   # Translating longest ORFs and exporting as FASTA file
   sequences_for_translation <- all_ORFs %>%
-    filter(frame == "plus_0") %>%
+    dplyr::filter(frame == "plus_0") %>%
     group_by(seq) %>%
-    slice_max(order_by = length, n = 1, with_ties = FALSE) %>%
-    ungroup()
+    dplyr::slice_max(order_by = length, n = 1, with_ties = FALSE) %>%
+    dplyr::ungroup()
 
   all_translated_sequences <- sequences_for_translation %>%
-    mutate(
+    dplyr::mutate(
       nuc_sequence_lower = tolower(nuc_sequence),
       translated_aa = map_chr(nuc_sequence_lower, ~{
         seq_chars <- strsplit(.x, "")[[1]]
@@ -230,7 +230,7 @@ find_startstop_ORFs <- function(file_name) {
     pull(translated_aa, name = seq)
 
   translation_file_name <- paste(segment_name, "translated.fasta", sep = "-")
-  write.fasta(as.list(all_translated_sequences), names = names(all_translated_sequences), file.out = translation_file_name)
+  seqinr::write.fasta(as.list(all_translated_sequences), names = names(all_translated_sequences), file.out = translation_file_name)
 
   # Diagnostic Messages
   message("--- Run Complete ---")
@@ -253,7 +253,7 @@ find_stopstop_ORFs <- function(file_name) {
   }
 
   # 1. INTERNAL LOGIC TABLES ------------------------------------------------------------------
-  frame_correction_table <- tibble(
+  frame_correction_table <- tibble::tibble(
     condition = c(
       rep("plus_0", 3), rep("plus_1", 3), rep("plus_2", 3),
       rep("revcom_plus_0", 3), rep("revcom_plus_1", 3), rep("revcom_plus_2", 3)
@@ -298,7 +298,7 @@ find_stopstop_ORFs <- function(file_name) {
     all_orfs_list <- list()
 
     for (f in 0:2) {
-      sub_seq <- str_sub(sequence_str, f + 1, seq_len)
+      sub_seq <- stringr::str_sub(sequence_str, f + 1, seq_len)
       codons <- strsplit(sub_seq, "(?<=...)", perl = TRUE)[[1]]
 
       # Fixed the assignment operator typo here:
@@ -320,7 +320,7 @@ find_stopstop_ORFs <- function(file_name) {
           end_pos <- f + (e_idx * 3)
 
           if (nchar(nuc_seq) > 0) {
-            all_orfs_list[[length(all_orfs_list) + 1]] <- tibble(
+            all_orfs_list[[length(all_orfs_list) + 1]] <- tibble::tibble(
               start = start_pos,
               end = end_pos,
               width = nchar(nuc_seq)
@@ -329,13 +329,13 @@ find_stopstop_ORFs <- function(file_name) {
         }
       }
     }
-    return(bind_rows(all_orfs_list))
+    return(dplyr::bind_rows(all_orfs_list))
   }
 
   process_strand_ORFs <- function(sequences_df, strand_type, frame_prefix) {
     sequences_df %>%
-      rowwise() %>%
-      mutate(
+      dplyr::rowwise() %>%
+      dplyr::mutate(
         processed_sequence = if (strand_type == "negative") {
           toupper(complem(strReverse(sequence)))
         } else {
@@ -343,15 +343,15 @@ find_stopstop_ORFs <- function(file_name) {
         },
         ORFs = list(find_stop_free_blocks(processed_sequence))
       ) %>%
-      unnest(ORFs) %>%
-      ungroup() %>%
-      as_tibble() %>%
-      mutate(
+      tidyr::unnest(ORFs) %>%
+      dplyr::ungroup() %>%
+      tibble::as_tibble() %>%
+      dplyr::mutate(
         ORF_ID = paste(seq_name, row_number(), sep = "-"),
         length = width,
-        nuc_sequence = str_sub(processed_sequence, start, end)
+        nuc_sequence = stringr::str_sub(processed_sequence, start, end)
       ) %>%
-      select(seq = seq_name, ORF_ID, start, end, length, nuc_sequence)
+      dplyr::select(seq = seq_name, ORF_ID, start, end, length, nuc_sequence)
   }
 
   # 3. CORE PIPELINE PROCESSING ----------------------------------------------------------------
@@ -359,7 +359,7 @@ find_stopstop_ORFs <- function(file_name) {
   segment_name <- sub("_complete$", "", segment_name)
 
   # PASS 1: Check for sequences containing ambiguous bases
-  all_seqs_raw_list <- read.fasta(file = file_name, set.attributes = FALSE, as.string = TRUE)
+  all_seqs_raw_list <- seqinr::read.fasta(file = file_name, set.attributes = FALSE, as.string = TRUE)
   has_ambiguous_lgl_vec <- sapply(all_seqs_raw_list, has_ambiguous_bases)
   ambiguous_names <- names(all_seqs_raw_list[has_ambiguous_lgl_vec])
 
@@ -370,7 +370,7 @@ find_stopstop_ORFs <- function(file_name) {
   }
 
   # PASS 2: Import clean sequences using Biostrings
-  fasta_file <- readDNAStringSet(file_name)
+  fasta_file <- Biostrings::readDNAStringSet(file_name)
   all_biostring_names <- names(fasta_file)
   clean_names <- all_biostring_names[!(all_biostring_names %in% ambiguous_names)]
   sequences_without_ambiguities <- fasta_file[clean_names]
@@ -380,10 +380,10 @@ find_stopstop_ORFs <- function(file_name) {
   }
 
   temp_filtered_fasta <- tempfile(pattern = "filtered_sequences_", fileext = ".fasta")
-  writeXStringSet(sequences_without_ambiguities, temp_filtered_fasta)
-  all_sequences_list <- read.fasta(file = temp_filtered_fasta, set.attributes = FALSE, as.string = TRUE)
+  Biostrings::writeXStringSet(sequences_without_ambiguities, temp_filtered_fasta)
+  all_sequences_list <- seqinr::read.fasta(file = temp_filtered_fasta, set.attributes = FALSE, as.string = TRUE)
 
-  all_sequences_df <- tibble(
+  all_sequences_df <- tibble::tibble(
     seq_name = names(all_sequences_list),
     sequence = as.character(all_sequences_list)
   )
@@ -393,72 +393,72 @@ find_stopstop_ORFs <- function(file_name) {
 
   # Frame correction (positive)
   max_pos_start <- max(as.numeric(positive_ORF_1$start), na.rm = TRUE)
-  placeholder_frame_table <- tibble(
+  placeholder_frame_table <- tibble::tibble(
     nuc_position = as.character(1:(max_pos_start + 1000)),
     placeholder_frame = rep(c("plus_0", "plus_1", "plus_2"), length.out = max_pos_start + 1000)
   )
 
   positive_ORF_2 <- positive_ORF_1 %>%
-    mutate(start = as.character(start)) %>%
+    dplyr::mutate(start = as.character(start)) %>%
     left_join(placeholder_frame_table, by = c("start" = "nuc_position"))
 
   positive_ORF_3 <- positive_ORF_2 %>%
     group_by(seq) %>%
-    mutate(
+    dplyr::mutate(
       length = as.numeric(length),
       longest_orf_placeholder = placeholder_frame[which.max(length)],
       correct_frame_lookup = map(longest_orf_placeholder, ~frame_correction_table %>%
-                                   filter(condition == .x)),
+                                   dplyr::filter(condition == .x)),
       frame = map2_chr(placeholder_frame, correct_frame_lookup,
-                       ~filter(.y, frame_to_change == .x)$correct_frame)
+                       ~dplyr::filter(.y, frame_to_change == .x)$correct_frame)
     ) %>%
-    ungroup() %>%
-    select(-placeholder_frame, -longest_orf_placeholder, -correct_frame_lookup) %>%
-    mutate(sense = "positive")
+    dplyr::ungroup() %>%
+    dplyr::select(-placeholder_frame, -longest_orf_placeholder, -correct_frame_lookup) %>%
+    dplyr::mutate(sense = "positive")
 
   # Process negative strand
   negative_ORF_1 <- process_strand_ORFs(all_sequences_df, "negative", "revcom_plus_")
 
   # Frame correction (negative)
   max_neg_start <- max(as.numeric(negative_ORF_1$start), na.rm = TRUE)
-  placeholder_frame_table_neg <- tibble(
+  placeholder_frame_table_neg <- tibble::tibble(
     nuc_position = as.character(1:(max_neg_start + 1000)),
     placeholder_frame = rep(c("revcom_plus_0", "revcom_plus_1", "revcom_plus_2"), length.out = max_neg_start + 1000)
   )
 
   negative_ORF_2 <- negative_ORF_1 %>%
-    mutate(start = as.character(start)) %>%
+    dplyr::mutate(start = as.character(start)) %>%
     left_join(placeholder_frame_table_neg, by = c("start" = "nuc_position"))
 
   negative_ORF_3 <- negative_ORF_2 %>%
     group_by(seq) %>%
-    mutate(
+    dplyr::mutate(
       length = as.numeric(length),
       longest_orf_placeholder = placeholder_frame[which.max(length)],
       correct_frame_lookup = map(longest_orf_placeholder, ~frame_correction_table %>%
-                                   filter(condition == .x)),
+                                   dplyr::filter(condition == .x)),
       frame = map2_chr(placeholder_frame, correct_frame_lookup,
-                       ~filter(.y, frame_to_change == .x)$correct_frame)
+                       ~dplyr::filter(.y, frame_to_change == .x)$correct_frame)
     ) %>%
-    ungroup() %>%
-    select(-placeholder_frame, -longest_orf_placeholder, -correct_frame_lookup) %>%
-    mutate(sense = "negative")
+    dplyr::ungroup() %>%
+    dplyr::select(-placeholder_frame, -longest_orf_placeholder, -correct_frame_lookup) %>%
+    dplyr::mutate(sense = "negative")
 
   # Compiling data
-  all_ORFs <- bind_rows(positive_ORF_3, negative_ORF_3)
+  all_ORFs <- dplyr::bind_rows(positive_ORF_3, negative_ORF_3)
 
   output_file_name <- paste0(segment_name, "_stop-stop_ORFs.csv")
   write.csv(all_ORFs, file = output_file_name, row.names = FALSE)
 
   # Translating longest ORFs and exporting as FASTA file
   sequences_for_translation <- all_ORFs %>%
-    filter(frame == "plus_0") %>%
+    dplyr::filter(frame == "plus_0") %>%
     group_by(seq) %>%
-    slice_max(order_by = length, n = 1, with_ties = FALSE) %>%
-    ungroup()
+    dplyr::slice_max(order_by = length, n = 1, with_ties = FALSE) %>%
+    dplyr::ungroup()
 
   all_translated_sequences <- sequences_for_translation %>%
-    mutate(
+    dplyr::mutate(
       nuc_sequence_lower = tolower(nuc_sequence),
       translated_aa = map_chr(nuc_sequence_lower, ~{
         seq_chars <- strsplit(.x, "")[[1]]
@@ -468,7 +468,7 @@ find_stopstop_ORFs <- function(file_name) {
     pull(translated_aa, name = seq)
 
   translation_file_name <- paste(segment_name, "translated.fasta", sep = "-")
-  write.fasta(as.list(all_translated_sequences), names = names(all_translated_sequences), file.out = translation_file_name)
+  seqinr::write.fasta(as.list(all_translated_sequences), names = names(all_translated_sequences), file.out = translation_file_name)
 
   # Diagnostic Messages
   message("--- Run Complete ---")
@@ -513,7 +513,7 @@ graph_startstop_ORFs <- function(orf_data, output_prefix = "ORF_plot") {
   plot_x_limit <- ceiling_to_nearest_100(max_seq_len)
 
   visualisation_dataset <- orf_data %>%
-    mutate(block_seq_number = as.numeric(factor(seq, levels = unique(seq))))
+    dplyr::mutate(block_seq_number = as.numeric(factor(seq, levels = unique(seq))))
 
   all_frames <- c("plus_0", "plus_1", "plus_2", "revcom_plus_0", "revcom_plus_1", "revcom_plus_2")
 
@@ -524,7 +524,7 @@ graph_startstop_ORFs <- function(orf_data, output_prefix = "ORF_plot") {
   for (current_frame in all_frames) {
 
     block_dataset_for_graph <- visualisation_dataset %>%
-      filter(frame == current_frame)
+      dplyr::filter(frame == current_frame)
 
     # If a frame has no data, create a blank placeholder plot to keep the layout grid aligned
     if (nrow(block_dataset_for_graph) == 0) {
@@ -538,20 +538,20 @@ graph_startstop_ORFs <- function(orf_data, output_prefix = "ORF_plot") {
     }
 
     block_graph_dataset <- block_dataset_for_graph %>%
-      mutate(start = as.character(start), end = as.character(end)) %>%
-      pivot_longer(
+      dplyr::mutate(start = as.character(start), end = as.character(end)) %>%
+      tidyr::pivot_longer(
         cols = c(start, end),
         names_to = "position_type",
         values_to = "position"
       ) %>%
-      mutate(
+      dplyr::mutate(
         category = case_when(
           position_type == "end" ~ "stop",
           is.na(kozak_strength) | kozak_strength == "" ~ "unknown",
           TRUE ~ kozak_strength
         )
       ) %>%
-      select(V1 = block_seq_number, position, category)
+      dplyr::select(V1 = block_seq_number, position, category)
 
     block_graph_dataset$position <- as.numeric(block_graph_dataset$position)
 
@@ -564,7 +564,7 @@ graph_startstop_ORFs <- function(orf_data, output_prefix = "ORF_plot") {
       labels = all_categories_labels
     )
 
-    dummy_data <- tibble(
+    dummy_data <- tibble::tibble(
       V1 = NA_real_,
       position = NA_real_,
       category = factor(
@@ -574,7 +574,7 @@ graph_startstop_ORFs <- function(orf_data, output_prefix = "ORF_plot") {
       )
     )
 
-    plot_data_with_dummy <- bind_rows(block_graph_dataset, dummy_data)
+    plot_data_with_dummy <- dplyr::bind_rows(block_graph_dataset, dummy_data)
     block_graph_title <- paste(output_prefix, current_frame, sep = " - ")
 
     block_graph <- ggplot(plot_data_with_dummy,
@@ -692,7 +692,7 @@ graph_stopstop_ORFs <- function(orf_data, output_prefix = "ORF_plot") {
   plot_x_limit <- ceiling_to_nearest_100(max_seq_len)
 
   visualisation_dataset <- orf_data %>%
-    mutate(block_seq_number = as.numeric(factor(seq, levels = unique(seq))))
+    dplyr::mutate(block_seq_number = as.numeric(factor(seq, levels = unique(seq))))
 
   all_frames <- c("plus_0", "plus_1", "plus_2", "revcom_plus_0", "revcom_plus_1", "revcom_plus_2")
 
@@ -703,7 +703,7 @@ graph_stopstop_ORFs <- function(orf_data, output_prefix = "ORF_plot") {
   for (current_frame in all_frames) {
 
     block_dataset_for_graph <- visualisation_dataset %>%
-      filter(frame == current_frame)
+      dplyr::filter(frame == current_frame)
 
     # Handle frames with missing data to keep the 3x2 matrix layout structurally aligned
     if (nrow(block_dataset_for_graph) == 0) {
@@ -718,8 +718,8 @@ graph_stopstop_ORFs <- function(orf_data, output_prefix = "ORF_plot") {
 
     # Modifying data map to plot ONLY the 'end' column (the position of the stop codon)
     block_graph_dataset <- block_dataset_for_graph %>%
-      select(V1 = block_seq_number, position = end) %>%
-      mutate(category = factor("stop codon")) # Forces a unified categorical value for the legend
+      dplyr::select(V1 = block_seq_number, position = end) %>%
+      dplyr::mutate(category = factor("stop codon")) # Forces a unified categorical value for the legend
 
     block_graph_title <- paste(output_prefix, current_frame, sep = " - ")
 
