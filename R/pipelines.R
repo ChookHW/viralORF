@@ -593,9 +593,9 @@ graph_startstop_ORFs <- function(orf_data, output_prefix = "ORF_plot") {
                           ggplot2::aes(x = position, y = V1, col = category, shape = category)) +
       ggplot2::geom_point(size = 2.0, na.rm = TRUE) +
       ggplot2::theme_bw() +
-      ggplot2::theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+      ggplot2::theme(panel.grid.major = ggplot2::element_blank(), panel.grid.minor = ggplot2::element_blank(),
             plot.title = element_text(size = 10, face = "bold")) +
-      ggplot2::theme(axis.text.y = element_blank(), axis.ticks.y = element_blank()) +
+      ggplot2::theme(axis.text.y = ggplot2::element_blank(), axis.ticks.y = ggplot2::element_blank()) +
       ggplot2::ggtitle(block_graph_title) +
 
       ggplot2::scale_color_manual(
@@ -744,9 +744,9 @@ graph_stopstop_ORFs <- function(orf_data, output_prefix = "ORF_plot") {
                           ggplot2::aes(x = position, y = V1, col = category, shape = category)) +
       ggplot2::geom_point(size = 1.5, na.rm = TRUE) +
       ggplot2::theme_bw() +
-      ggplot2::theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+      ggplot2::theme(panel.grid.major = ggplot2::element_blank(), panel.grid.minor = ggplot2::element_blank(),
             plot.title = element_text(size = 10, face = "bold")) +
-      ggplot2::theme(axis.text.y = element_blank(), axis.ticks.y = element_blank()) +
+      ggplot2::theme(axis.text.y = ggplot2::element_blank(), axis.ticks.y = ggplot2::element_blank()) +
       ggplot2::ggtitle(block_graph_title) +
 
       # Enforce a single black dot classification style matching formatting rules
