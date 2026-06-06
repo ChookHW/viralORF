@@ -5,7 +5,8 @@
 # Installation instructions
 
 ```R
-install.packages("devtools") # if devtools is not previously installed
+# loading devtools
+if(!require(devtools)) { install.packages("devtools"); library(devtools) }
 
 devtools::install_github("FakePorcupine/viralORF") # installs package
 ```
