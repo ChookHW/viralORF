@@ -8,7 +8,7 @@
 # loading devtools
 if(!require(devtools)) { install.packages("devtools"); library(devtools) }
 
-devtools::install_github("FakePorcupine/viralORF") # installs package
+devtools::install_github("ChookHW/viralORF") # installs package
 ```
 
 # Core functions
